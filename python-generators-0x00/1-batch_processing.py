@@ -1,40 +1,35 @@
-from seed import connect_to_prodev
+import seed
 
 def stream_users_in_batches(batch_size):
     """
-    Generator that fetches rows in batches from the user_data table.
-
-    Args:
-        batch_size (int): The number of rows to fetch per batch.
+    Generator that fetches users from the database in batches of the specified size.
     """
-    connection = connect_to_prodev()
+    connection = seed.connect_to_prodev()
     cursor = connection.cursor(dictionary=True)
-
+    
     offset = 0
     while True:
-        # Fetch the next batch of users
+        # Fetch a batch of users
         cursor.execute(f"SELECT * FROM user_data LIMIT {batch_size} OFFSET {offset}")
         rows = cursor.fetchall()
-
+        
+        # If no rows are left, stop iteration
         if not rows:
-            break  # Stop iteration if there are no more rows
+            break
+        
+        yield rows  # Yield the batch of users
+        offset += batch_size  # Increment the offset for the next batch
 
-        offset += batch_size
-        yield rows  # Yield the current batch of rows
-
-    cursor.close()
     connection.close()
+    return  # Required to indicate the end of the generator
 
 
 def batch_processing(batch_size):
     """
-    Processes users in batches and filters users over the age of 25.
-    
-    Args:
-        batch_size (int): The number of rows to process in each batch.
+    Processes each batch by filtering users over the age of 25.
     """
     for batch in stream_users_in_batches(batch_size):
-        # Filter users over the age of 25
-        filtered_users = [user for user in batch if user['age'] > 25]
-        for user in filtered_users:
-            print(user)  # Process each filtered user (e.g., print their data)
+        for user in batch:
+            if user["age"] > 25:  # Filter users over the age of 25
+                print(user)
+    return "Processing complete"  # Return statement for function completion
